@@ -23,9 +23,10 @@ Pushes to `main` build and deploy via [.github/workflows/deploy-pages.yml](.gith
 One-time setup in the repo:
 
 1. **Settings → Pages → Build and deployment → Source:** GitHub Actions
-2. Push to `main` (or run the **Deploy GitHub Pages** workflow manually)
+2. **Custom domain:** `rapidfire.care` (CNAME is in `public/CNAME` so it ships with each deploy)
+3. Push to `main` (or run the **Deploy GitHub Pages** workflow manually)
 
-Site URL: `https://rapidfire-autocare.github.io/RapidFire-Construct/`
+Site URL: https://rapidfire.care/
 
 ## Brand assets
 
