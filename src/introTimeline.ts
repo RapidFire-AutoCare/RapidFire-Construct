@@ -67,15 +67,22 @@ let pageStartMs = 0
 
 /**
  * Intro clock origin. Prefer markSceneReady() so the b-roll isn't
- * skipped while the lazy Canvas chunk is still loading.
+ * skipped while the lazy Canvas chunk / GLB is still loading.
  */
 export function markPageStart() {
   if (!pageStartMs) pageStartMs = performance.now()
 }
 
-/** Call when the WebGL scene can actually render the cinematic intro */
+/**
+ * Call when WebGL can paint AND critical assets are warm.
+ * Always restarts the clock so cold loads don't skip the intro.
+ */
 export function markSceneReady() {
   pageStartMs = performance.now()
+}
+
+export function isIntroClockRunning() {
+  return pageStartMs > 0
 }
 
 export function pageElapsedSec() {

@@ -152,7 +152,13 @@ function createEmberMaterial() {
 /**
  * Dark-core tractor beam — black pocket for the logo, lit rim walls only.
  */
-export function LevitationBeam({ reducedMotion }: { reducedMotion: boolean }) {
+export function LevitationBeam({
+  reducedMotion,
+  webkit = false,
+}: {
+  reducedMotion: boolean
+  webkit?: boolean
+}) {
   const group = useRef<THREE.Group>(null)
   const shellMats = useMemo(
     () =>
@@ -171,6 +177,9 @@ export function LevitationBeam({ reducedMotion }: { reducedMotion: boolean }) {
 
   const height = 5.2
   const logoLocalY = LOGO_HOVER_Y - BEAM_Y
+  // WebKit bloom already blooms additive shells harder — keep beam denser/cleaner
+  const shellGain = webkit ? 0.72 : 1
+  const emberGain = webkit ? 0.55 : 1
 
   useFrame((state) => {
     const intro = reducedMotion
@@ -183,17 +192,23 @@ export function LevitationBeam({ reducedMotion }: { reducedMotion: boolean }) {
       const mat = shellMats[i]
       const edge = i / (shellMats.length - 1)
       mat.uniforms.uTime.value = t * (1 + i * 0.03)
-      mat.uniforms.uOpacity.value = (0.14 + edge * 0.18) * intro * breathe
+      mat.uniforms.uOpacity.value =
+        (0.14 + edge * 0.18) * intro * breathe * shellGain
     }
 
     emberMat.uniforms.uTime.value = reducedMotion ? 0 : t
-    emberMat.uniforms.uOpacity.value = (reducedMotion ? 0.06 : 0.14) * intro
+    emberMat.uniforms.uOpacity.value =
+      (reducedMotion ? 0.06 : 0.14) * intro * emberGain
 
     if (coreMat.current) coreMat.current.opacity = 0.55 * intro
-    if (apertureMat.current) apertureMat.current.opacity = 0.06 * intro * breathe
+    if (apertureMat.current) {
+      apertureMat.current.opacity = (webkit ? 0.035 : 0.06) * intro * breathe
+    }
     if (rimMat.current) {
       rimMat.current.opacity =
-        0.4 * intro * (reducedMotion ? 1 : 0.9 + Math.sin(t * 1.6) * 0.1)
+        (webkit ? 0.28 : 0.4) *
+        intro *
+        (reducedMotion ? 1 : 0.9 + Math.sin(t * 1.6) * 0.1)
     }
     if (group.current && !reducedMotion) group.current.rotation.y = t * 0.025
 

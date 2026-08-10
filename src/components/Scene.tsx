@@ -1,11 +1,13 @@
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { ContactShadows, Float } from '@react-three/drei'
 import { Bloom, EffectComposer } from '@react-three/postprocessing'
-import { Suspense, useCallback, useEffect, useLayoutEffect, useState, useRef } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import * as THREE from 'three'
+import { HalfFloatType } from 'three'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import type { Group } from 'three'
-import { INTRO, easeCamera, msUntil, segmentProgress, smoothstep01 } from '../introTimeline'
+import { INTRO, easeCamera, isIntroClockRunning, pageElapsedSec, segmentProgress, smoothstep01 } from '../introTimeline'
+import { isWebKit } from '../lib/browser'
 import { LevitationBeam } from './LevitationBeam'
 import { LogoPedestal } from './LogoPedestal'
 import { LOGO_FIT_DIAMETER, LOGO_HOVER_Y } from './platform'
@@ -103,6 +105,11 @@ function IntroCamera({ reducedMotion }: { reducedMotion: boolean }) {
     if (reducedMotion || settled.current) {
       camera.position.copy(CAM_HOME)
       camera.lookAt(LOOK_HOME)
+      return
+    }
+
+    // Wait until the shared intro clock starts (WebGL + assets ready)
+    if (!isIntroClockRunning()) {
       return
     }
 
@@ -254,6 +261,8 @@ function LogoRig({ reducedMotion }: { reducedMotion: boolean }) {
   const spinGroup = useRef<Group>(null)
   const pointer = usePointer()
   const { gl } = useThree()
+  const webkit = useMemo(() => isWebKit(), [])
+  const lightGain = webkit ? 0.55 : 1
 
   const interactive = useRef(reducedMotion)
   const [floatOn, setFloatOn] = useState(reducedMotion)
@@ -297,18 +306,6 @@ function LogoRig({ reducedMotion }: { reducedMotion: boolean }) {
     if (reducedMotion) {
       interactive.current = true
       setFloatOn(true)
-      return
-    }
-    // Hold interaction until the b-roll camera settles into the hero shot
-    const interactId = window.setTimeout(() => {
-      interactive.current = true
-    }, msUntil(INTRO.extrasAt))
-    const floatId = window.setTimeout(() => {
-      setFloatOn(true)
-    }, msUntil(INTRO.extrasAt))
-    return () => {
-      window.clearTimeout(interactId)
-      window.clearTimeout(floatId)
     }
   }, [reducedMotion])
 
@@ -434,6 +431,11 @@ function LogoRig({ reducedMotion }: { reducedMotion: boolean }) {
   useFrame((state, delta) => {
     if (!followGroup.current || !spinGroup.current) return
 
+    if (!reducedMotion && !interactive.current && pageElapsedSec() >= INTRO.extrasAt) {
+      interactive.current = true
+      if (!floatOn) setFloatOn(true)
+    }
+
     const dt = Math.min(delta, 1 / 30)
 
     if (!reducedMotion) {
@@ -518,7 +520,7 @@ function LogoRig({ reducedMotion }: { reducedMotion: boolean }) {
 
     if (beamUp.current) {
       // Keep the catch focused on the logo — bright enough to bloom, not wash the pocket
-      beamUp.current.intensity = 22 * spinBoost
+      beamUp.current.intensity = 22 * spinBoost * lightGain
       beamUp.current.position.set(
         Math.sin(ry) * 0.12,
         LOGO_HOVER_Y - 1.05,
@@ -533,7 +535,7 @@ function LogoRig({ reducedMotion }: { reducedMotion: boolean }) {
       )
     }
     if (beamFill.current) {
-      beamFill.current.intensity = 2.4 * spinBoost
+      beamFill.current.intensity = 2.4 * spinBoost * lightGain
       beamFill.current.position.set(
         Math.sin(ry) * 0.2,
         LOGO_HOVER_Y - 0.65,
@@ -547,7 +549,8 @@ function LogoRig({ reducedMotion }: { reducedMotion: boolean }) {
         LOGO_HOVER_Y + 0.3 - rx * 0.7,
         0.9 + Math.cos(ry) * 0.4,
       )
-      glintA.current.intensity = (3.2 + Math.abs(ry) * 4.2 + Math.abs(rx) * 2.8) * spinBoost
+      glintA.current.intensity =
+        (3.2 + Math.abs(ry) * 4.2 + Math.abs(rx) * 2.8) * spinBoost * lightGain
     }
     if (glintB.current) {
       glintB.current.position.set(
@@ -555,7 +558,8 @@ function LogoRig({ reducedMotion }: { reducedMotion: boolean }) {
         LOGO_HOVER_Y - 0.05 + rx * 0.5,
         0.6 + Math.cos(ry + 1.1) * 0.35,
       )
-      glintB.current.intensity = (2.1 + Math.abs(rx) * 3.1 + Math.abs(ry) * 1.4) * spinBoost
+      glintB.current.intensity =
+        (2.1 + Math.abs(rx) * 3.1 + Math.abs(ry) * 1.4) * spinBoost * lightGain
     }
   })
 
@@ -629,11 +633,11 @@ function LogoRig({ reducedMotion }: { reducedMotion: boolean }) {
 function ShadowLayer({ reducedMotion }: { reducedMotion: boolean }) {
   const [on, setOn] = useState(reducedMotion)
 
-  useEffect(() => {
-    if (reducedMotion) return
-    const id = window.setTimeout(() => setOn(true), msUntil(INTRO.shadowAt))
-    return () => window.clearTimeout(id)
-  }, [reducedMotion])
+  useFrame(() => {
+    if (!on && !reducedMotion && pageElapsedSec() >= INTRO.shadowAt) {
+      setOn(true)
+    }
+  })
 
   if (!on) return null
 
@@ -650,42 +654,60 @@ function ShadowLayer({ reducedMotion }: { reducedMotion: boolean }) {
   )
 }
 
-function BloomLayer({ reducedMotion }: { reducedMotion: boolean }) {
+function BloomLayer({
+  reducedMotion,
+  webkit,
+}: {
+  reducedMotion: boolean
+  webkit: boolean
+}) {
   const [on, setOn] = useState(reducedMotion)
   const bloomRef = useRef<{ intensity: number } | null>(null)
-
-  useEffect(() => {
-    if (reducedMotion) return
-    const id = window.setTimeout(() => setOn(true), msUntil(INTRO.bloomAt))
-    return () => window.clearTimeout(id)
-  }, [reducedMotion])
+  // Safari/WebKit: mipmapBlur bloom produces banding + muddy halos; use softer params
+  const peakIntensity = webkit ? 0.34 : 0.58
+  const threshold = webkit ? 0.74 : 0.62
+  const smoothing = webkit ? 0.42 : 0.28
 
   useFrame(() => {
+    // Mount bloom from the intro clock (not a setTimeout race vs markSceneReady)
+    if (!on && !reducedMotion && pageElapsedSec() >= INTRO.bloomAt) {
+      setOn(true)
+    }
     if (!bloomRef.current) return
     const t = reducedMotion
       ? 1
       : smoothstep01(segmentProgress(INTRO.bloomAt, INTRO.bloomDur))
-    // Slight pulse with page clock so specular blooms feel alive with mouse catch-lights
-    const pulse = 1 + Math.sin(performance.now() * 0.0018) * 0.06
-    bloomRef.current.intensity = 0.62 * t * pulse
+    const pulse = webkit ? 1 : 1 + Math.sin(performance.now() * 0.0018) * 0.05
+    bloomRef.current.intensity = peakIntensity * t * pulse
   })
 
   if (!on && !reducedMotion) return null
 
   return (
-    <EffectComposer multisampling={0} enableNormalPass={false}>
+    <EffectComposer
+      multisampling={0}
+      enableNormalPass={false}
+      frameBufferType={HalfFloatType}
+    >
       <Bloom
         ref={bloomRef as never}
-        intensity={reducedMotion ? 0.62 : 0}
-        luminanceThreshold={0.58}
-        luminanceSmoothing={0.26}
-        mipmapBlur
+        intensity={reducedMotion ? peakIntensity : 0}
+        luminanceThreshold={threshold}
+        luminanceSmoothing={smoothing}
+        // mipmapBlur is the main Safari artifact source (stepped/banded glow)
+        mipmapBlur={!webkit}
       />
     </EffectComposer>
   )
 }
 
-function SceneContents({ reducedMotion }: { reducedMotion: boolean }) {
+function SceneContents({
+  reducedMotion,
+  webkit,
+}: {
+  reducedMotion: boolean
+  webkit: boolean
+}) {
   return (
     <>
       <IntroCamera reducedMotion={reducedMotion} />
@@ -693,14 +715,14 @@ function SceneContents({ reducedMotion }: { reducedMotion: boolean }) {
       <LocalEnvironment reducedMotion={reducedMotion} />
 
       <LogoPedestal reducedMotion={reducedMotion} />
-      <LevitationBeam reducedMotion={reducedMotion} />
+      <LevitationBeam reducedMotion={reducedMotion} webkit={webkit} />
 
       <Suspense fallback={null}>
         <LogoRig reducedMotion={reducedMotion} />
       </Suspense>
 
       <ShadowLayer reducedMotion={reducedMotion} />
-      <BloomLayer reducedMotion={reducedMotion} />
+      <BloomLayer reducedMotion={reducedMotion} webkit={webkit} />
     </>
   )
 }
@@ -709,18 +731,13 @@ export function Scene({ onReady }: { onReady?: () => void }) {
   const reducedMotion = usePrefersReducedMotion()
   const [ready, setReady] = useState(false)
   const notified = useRef(false)
-
-  // Start intro clock before child effects schedule timeouts
-  useLayoutEffect(() => {
-    if (notified.current) return
-    notified.current = true
-    onReady?.()
-  }, [onReady])
+  const webkit = useMemo(() => isWebKit(), [])
 
   return (
     <div className={`scene-root${ready ? ' scene-root--ready' : ''}`} aria-hidden>
       <Canvas
-        dpr={[1, 1.5]}
+        // Safari: high DPR + bloom = heavy banding; cap pixel ratio
+        dpr={webkit ? [1, 1] : [1, 1.5]}
         camera={{
           position: [
             Math.sin(CAM_START_AZ) * CAM_START_RADIUS,
@@ -732,20 +749,28 @@ export function Scene({ onReady }: { onReady?: () => void }) {
           far: 40,
         }}
         gl={{
-          antialias: true,
-          alpha: true,
-          premultipliedAlpha: false,
-          powerPreference: 'high-performance',
+          antialias: !webkit,
+          // Opaque black RT — transparent canvas + bloom composites badly on WebKit
+          alpha: false,
+          powerPreference: webkit ? 'default' : 'high-performance',
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.05,
+          toneMappingExposure: webkit ? 0.95 : 1.05,
+          stencil: false,
         }}
         onCreated={({ gl, scene }) => {
-          gl.setClearColor(0x000000, 0)
-          scene.background = null
-          requestAnimationFrame(() => setReady(true))
+          gl.setClearColor(0x050507, 1)
+          scene.background = new THREE.Color(0x050507)
+          // Start the intro clock only once WebGL can actually paint
+          requestAnimationFrame(() => {
+            if (!notified.current) {
+              notified.current = true
+              onReady?.()
+            }
+            setReady(true)
+          })
         }}
       >
-        <SceneContents reducedMotion={reducedMotion} />
+        <SceneContents reducedMotion={reducedMotion} webkit={webkit} />
       </Canvas>
     </div>
   )

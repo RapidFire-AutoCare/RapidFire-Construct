@@ -35,9 +35,9 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: transparent;
+  background: #050507;
   opacity: 0;
-  transition: opacity 0.7s var(--rf-ease);
+  transition: opacity 0.55s var(--rf-ease);
 }
 
 .scene-root--ready {
