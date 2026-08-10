@@ -1,0 +1,21 @@
+:root {
+  --rf-bg: #050505;
+  --rf-bg-deep: #0b0f14;
+  --rf-orange: #ff4500;
+  --rf-orange-hot: #ff6a1a;
+  --rf-orange-deep: #c73400;
+  --rf-cyan: #5ec8ff;
+  --rf-silver: #c8d0d8;
+  --rf-text: #f2f4f6;
+  --rf-text-muted: rgba(242, 244, 246, 0.68);
+  --rf-font-display: 'Orbitron', sans-serif;
+  --rf-font-body: 'Rajdhani', sans-serif;
+  --rf-glow-orange: 0 0 28px rgba(255, 69, 0, 0.45);
+  --rf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Keep in sync with src/introTimeline.ts */
+  --rf-intro-title-at: 4.15s;
+  --rf-intro-copy-at: 4.35s;
+  --rf-intro-footer-at: 4.55s;
+  --rf-intro-ui-dur: 0.45s;
+}

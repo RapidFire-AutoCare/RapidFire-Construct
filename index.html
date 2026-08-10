@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="%BASE_URL%brand/logo-dark.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="RapidFire AutoCare — AI-powered automotive services platform. Currently under development. Check back later."
+    />
+    <title>RapidFire AutoCare — Coming Soon</title>
+    <style>
+      /* First paint: solid dark base */
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background-color: #050507;
+      }
+    </style>
+    <link rel="preload" href="%BASE_URL%brand/rf-logo.glb" as="fetch" crossorigin />
+    <link rel="preload" href="%BASE_URL%draco/draco_wasm_wrapper.js" as="script" />
+    <link rel="preload" href="%BASE_URL%draco/draco_decoder.wasm" as="fetch" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

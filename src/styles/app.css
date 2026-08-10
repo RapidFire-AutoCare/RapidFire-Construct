@@ -1,0 +1,216 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+}
+
+body {
+  background-color: #050507;
+  color: var(--rf-text);
+  font-family: var(--rf-font-body);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+.app {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100vh;
+  overflow: hidden;
+  background: transparent;
+}
+
+.scene-root {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.7s var(--rf-ease);
+}
+
+.scene-root--ready {
+  opacity: 1;
+}
+
+.scene-root canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
+}
+
+.scene-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.scene-fallback__logo {
+  width: min(42vw, 220px);
+  height: auto;
+  filter: drop-shadow(0 0 36px rgba(255, 69, 0, 0.45));
+  transform: translateY(-8vh);
+  opacity: 0;
+  animation: rf-rise var(--rf-intro-ui-dur) var(--rf-ease) 0.35s forwards;
+}
+
+.coming-soon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 3.25rem 1.25rem 3.1rem;
+  text-align: center;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 5, 7, 0) 0%,
+    rgba(5, 5, 7, 0.55) 45%,
+    rgba(5, 5, 7, 0.96) 100%
+  );
+  opacity: 0;
+}
+
+.coming-soon__status {
+  margin: 0;
+  font-family: var(--rf-font-display);
+  font-size: clamp(1.4rem, 4.2vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow:
+    0 0 28px rgba(255, 69, 0, 0.4),
+    0 2px 16px rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+.coming-soon__copy {
+  margin: 0;
+  max-width: 26rem;
+  font-size: clamp(1.05rem, 2.4vw, 1.25rem);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  line-height: 1.35;
+  color: rgba(242, 244, 246, 0.78);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+.site-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.85rem;
+  padding: 0.65rem 1.25rem 0.95rem;
+  font-family: var(--rf-font-body);
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(242, 244, 246, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+/* DOM copy waits until the WebGL intro clock starts (scene ready) */
+.app--intro .coming-soon {
+  animation: rf-fade-in 0.7s var(--rf-ease) calc(var(--rf-intro-title-at) - 0.15s) forwards;
+}
+
+.app--intro .coming-soon__status {
+  animation: rf-rise var(--rf-intro-ui-dur) var(--rf-ease) var(--rf-intro-title-at) forwards;
+}
+
+.app--intro .coming-soon__copy {
+  animation: rf-rise var(--rf-intro-ui-dur) var(--rf-ease) var(--rf-intro-copy-at) forwards;
+}
+
+.app--intro .site-footer {
+  animation: rf-rise var(--rf-intro-ui-dur) var(--rf-ease) var(--rf-intro-footer-at) forwards;
+}
+
+.site-footer span + span::before {
+  content: '·';
+  margin-right: 0.85rem;
+  color: rgba(255, 69, 0, 0.5);
+}
+
+@keyframes rf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rf-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .coming-soon {
+    padding: 3.5rem 1rem 3.1rem;
+  }
+
+  .coming-soon__status {
+    letter-spacing: 0.1em;
+  }
+
+  .scene-fallback__logo {
+    width: min(58vw, 200px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-root {
+    opacity: 1;
+    transition: none;
+  }
+
+  .scene-fallback__logo,
+  .coming-soon,
+  .coming-soon__status,
+  .coming-soon__copy,
+  .site-footer {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
